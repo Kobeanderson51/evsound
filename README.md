@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EV Sound FX
 
-## Getting Started
+Speed-reactive engine sounds for your EV, played through the car speakers. Open it in the
+Tesla in-car browser (or on your phone connected via Bluetooth), tap START, and the app
+synthesizes engine audio that follows your real GPS speed — virtual gears, shift styles,
+and a hold-to-rev button included.
 
-First, run the development server:
+## How it works
+
+- **Speed**: read from the browser Geolocation API (the Tesla browser and phones provide GPS).
+- **RPM simulation**: speed is mapped through 6 virtual gears with configurable shift styles.
+- **Audio**: generated in real time with the Web Audio API — no audio files, no plugins.
+
+Everything runs 100% in your browser. No accounts, no data collection, no analytics, and no
+network requests after the page loads. Your location never leaves the device.
+
+## Sounds
+
+- 🏁 V8 Muscle
+- 🏎️ V6 Sport
+- ⚡ EV Whine
+- 🛸 Sci-Fi Warp
+
+To add a real recorded engine loop, drop an audio file in `public/sounds/` and add a
+`kind: "sample"` entry in `lib/audio/profiles.ts` (example included in the file).
+
+## Settings
+
+Volume · Max speed · Response (smoother/faster) · Shift style (Relaxed/Medium/Sport) ·
+Exterior Boost (loud at idle for outside/Bluetooth speakers) · Audio Stability Mode
+(extra buffering for devices that crackle) · Motion assist (phone accelerometer for
+quicker throttle cues) · Demo mode (test without driving)
+
+## Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Use **Demo mode** in Settings to
+simulate speed without GPS.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Using it in the car
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Deploy (e.g. [Vercel](https://vercel.com): `npx vercel`) — the Tesla browser needs an
+   HTTPS URL, and geolocation only works over HTTPS.
+2. Open the URL on the Tesla touchscreen (or your phone).
+3. Tap **START** and allow location access when prompted.
+4. Keep the tab active while driving — browsers pause audio when fully backgrounded.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+⚠️ Set up your sound before you drive. Keep your eyes on the road.
