@@ -20,6 +20,11 @@ export class Drivetrain {
   private lastSpeed = 0;
   private accel = 0;
   private revRpm = 0;
+  private prevGear = 1;
+  /** seconds remaining of downshift rev-match blip */
+  private blip = 0;
+  /** seconds remaining of upshift throttle cut */
+  private cut = 0;
   rpm = 0;
 
   /**
@@ -80,8 +85,31 @@ export class Drivetrain {
       this.smoothedSpeed < 0.8
         ? idleRpm
         : (gear === 1 ? idleRpm : lowRpm) + inGear * (shiftRpm - (gear === 1 ? idleRpm : lowRpm));
-    // Top gear can pull past the shift point toward redline
-    if (gear === GEAR_TOPS.length) driveRpm = lowRpm + inGear * (redlineRpm - lowRpm);
+    // Top gear pulls past the shift point toward redline only under hard
+    // throttle — steady cruising settles instead of creeping to redline
+    if (gear === GEAR_TOPS.length) {
+      const pull = Math.min(1, Math.max(0, (throttle - 0.4) / 0.6));
+      driveRpm = lowRpm + inGear * (shiftRpm - lowRpm) + inGear * pull * (redlineRpm - shiftRpm);
+    }
+
+    // Shift character: throttle cut on upshift, rev-match blip on downshift
+    if (this.smoothedSpeed > 2) {
+      if (gear > this.prevGear) {
+        this.cut = 0.18;
+        this.blip = 0;
+      } else if (gear < this.prevGear) {
+        this.blip = 0.3;
+        this.cut = 0;
+      }
+    }
+    this.prevGear = gear;
+    if (this.blip > 0) {
+      this.blip -= dt;
+      throttle = Math.max(throttle, 0.85); // heel-toe style rev-match burst
+    } else if (this.cut > 0) {
+      this.cut -= dt;
+      throttle = Math.min(throttle, 0.05); // brief lift between gears
+    }
 
     // Rev override (stationary or on top of drive rpm)
     if (revHeld) {
@@ -103,5 +131,8 @@ export class Drivetrain {
   reset(idleRpm: number) {
     this.rpm = idleRpm;
     this.revRpm = 0;
+    this.prevGear = 1;
+    this.blip = 0;
+    this.cut = 0;
   }
 }
