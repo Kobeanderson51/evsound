@@ -73,6 +73,11 @@ export default function Home() {
     audioRef.current?.setVolume(volume);
   }, [volume]);
 
+  // Expose profiles for automated audio tests
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__EVFX_PROFILES = PROFILES;
+  }, []);
+
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.exteriorBoost = exteriorBoost;

@@ -1,31 +1,9 @@
-import type { SoundProfile, SynthProfile, SampleProfile } from "./profiles";
+import type { SoundProfile, SampleProfile, EngineProfile } from "./profiles";
 
-function makeDistortionCurve(amount: number): Float32Array {
-  const n = 2048;
-  const curve = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const x = (i * 2) / n - 1;
-    curve[i] = ((3 + amount) * x * 20 * (Math.PI / 180)) / (Math.PI + amount * Math.abs(x));
-  }
-  return curve;
-}
-
-function makeNoiseBuffer(ctx: AudioContext): AudioBuffer {
-  const len = ctx.sampleRate * 2;
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-  return buf;
-}
-
-type SynthVoice = {
-  kind: "synth";
-  profile: SynthProfile;
-  oscs: { osc: OscillatorNode; gain: GainNode; mult: number; baseGain: number }[];
-  noiseSrc: AudioBufferSourceNode;
-  noiseGain: GainNode;
-  noiseFilter: BiquadFilterNode;
-  filter: BiquadFilterNode;
+type WorkletVoice = {
+  kind: "engine";
+  profile: EngineProfile;
+  node: AudioWorkletNode;
   voiceGain: GainNode;
 };
 
@@ -39,8 +17,9 @@ type SampleVoice = {
 export class EngineAudio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  private voice: SynthVoice | SampleVoice | null = null;
+  private voice: WorkletVoice | SampleVoice | null = null;
   private sampleCache = new Map<string, AudioBuffer>();
+  private workletReady = false;
   private _volume = 0.8;
   /** Louder at idle for outside/Bluetooth speakers */
   exteriorBoost = false;
@@ -75,56 +54,31 @@ export class EngineAudio {
     const ctx = this.ensureCtx();
     if (ctx.state === "suspended") await ctx.resume();
     this.stop();
-    if (profile.kind === "synth") this.startSynth(ctx, profile);
+    if (profile.kind === "engine") await this.startWorklet(ctx, profile);
     else await this.startSample(ctx, profile);
   }
 
-  private startSynth(ctx: AudioContext, profile: SynthProfile) {
+  private async startWorklet(ctx: AudioContext, profile: EngineProfile) {
+    if (!this.workletReady) {
+      await ctx.audioWorklet.addModule("/engine-worklet.js");
+      this.workletReady = true;
+    }
+    const node = new AudioWorkletNode(ctx, "engine-processor", {
+      numberOfInputs: 0,
+      outputChannelCount: [1],
+      processorOptions: {
+        ...profile.params,
+        idleRpm: profile.idleRpm,
+        redlineRpm: profile.redlineRpm,
+      },
+    });
+    node.parameters.get("rpm")!.value = profile.idleRpm;
     const voiceGain = ctx.createGain();
     voiceGain.gain.value = 0;
-
-    const shaper = ctx.createWaveShaper();
-    shaper.curve = makeDistortionCurve(profile.distortion) as Float32Array<ArrayBuffer>;
-    shaper.oversample = "2x";
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = profile.filterBase;
-    filter.Q.value = 1.2;
-
-    shaper.connect(filter);
-    filter.connect(voiceGain);
+    node.connect(voiceGain);
     voiceGain.connect(this.master!);
-
-    const fireHz = (profile.idleRpm / 60) * (profile.cylinders / 2);
-    const oscs = profile.harmonics.map((h) => {
-      const osc = ctx.createOscillator();
-      osc.type = h.type;
-      osc.frequency.value = fireHz * h.mult;
-      const gain = ctx.createGain();
-      gain.gain.value = h.gain * 0.25;
-      osc.connect(gain);
-      gain.connect(shaper);
-      osc.start();
-      return { osc, gain, mult: h.mult, baseGain: h.gain };
-    });
-
-    const noiseSrc = ctx.createBufferSource();
-    noiseSrc.buffer = makeNoiseBuffer(ctx);
-    noiseSrc.loop = true;
-    const noiseFilter = ctx.createBiquadFilter();
-    noiseFilter.type = "bandpass";
-    noiseFilter.frequency.value = 200;
-    noiseFilter.Q.value = 0.8;
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.value = profile.noiseGain;
-    noiseSrc.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(shaper);
-    noiseSrc.start();
-
     voiceGain.gain.setTargetAtTime(profile.baseGain, ctx.currentTime, 0.4);
-    this.voice = { kind: "synth", profile, oscs, noiseSrc, noiseGain, noiseFilter, filter, voiceGain };
+    this.voice = { kind: "engine", profile, node, voiceGain };
   }
 
   private async startSample(ctx: AudioContext, profile: SampleProfile) {
@@ -159,17 +113,10 @@ export class EngineAudio {
     // Exterior boost: raise output at idle so it carries outside the cabin
     const boost = this.exteriorBoost ? 1.7 - 0.55 * rpmNorm : 1;
 
-    if (v.kind === "synth") {
-      const fireHz = (rpm / 60) * (v.profile.cylinders / 2);
-      for (const o of v.oscs) {
-        o.osc.frequency.setTargetAtTime(fireHz * o.mult, t, 0.03 * tau);
-        const g = o.baseGain * (0.22 + 0.32 * rpmNorm + 0.3 * throttle);
-        o.gain.gain.setTargetAtTime(g, t, 0.06 * tau);
-      }
-      const cutoff = v.profile.filterBase + v.profile.filterTrack * (rpmNorm * 0.75 + throttle * 0.45);
-      v.filter.frequency.setTargetAtTime(cutoff, t, 0.05 * tau);
-      v.noiseFilter.frequency.setTargetAtTime(120 + 900 * rpmNorm, t, 0.08 * tau);
-      v.noiseGain.gain.setTargetAtTime(v.profile.noiseGain * (0.5 + rpmNorm + throttle * 0.8), t, 0.08 * tau);
+    if (v.kind === "engine") {
+      // The worklet smooths internally; setting .value is safe and zipper-free
+      v.node.parameters.get("rpm")!.value = rpm;
+      v.node.parameters.get("throttle")!.value = throttle;
       v.voiceGain.gain.setTargetAtTime(v.profile.baseGain * boost, t, 0.1 * tau);
     } else {
       v.src.playbackRate.setTargetAtTime(rpm / v.profile.baseRpm, t, 0.04 * tau);
@@ -188,12 +135,8 @@ export class EngineAudio {
     v.voiceGain.gain.setTargetAtTime(0, t, 0.15);
     const cleanup = () => {
       try {
-        if (v.kind === "synth") {
-          v.oscs.forEach((o) => o.osc.stop());
-          v.noiseSrc.stop();
-        } else {
-          v.src.stop();
-        }
+        if (v.kind === "engine") v.node.disconnect();
+        else v.src.stop();
         v.voiceGain.disconnect();
       } catch {
         /* already stopped */
