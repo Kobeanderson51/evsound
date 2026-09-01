@@ -1,12 +1,45 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import styles from "./page.module.css";
-import { PROFILES, type SoundProfile } from "@/lib/audio/profiles";
+import { PROFILES, type SoundProfile, type FxProfile } from "@/lib/audio/profiles";
 import { EngineAudio } from "@/lib/audio/engine";
 import { Drivetrain, type ShiftStyle } from "@/lib/drivetrain";
 import { useSpeed } from "@/lib/useSpeed";
 import { useMotion } from "@/lib/useMotion";
+import SoundStudio from "@/components/SoundStudio";
+
+const STORAGE_KEY = "evsound-custom-profile";
+const SETTINGS_KEY = "evsound-settings";
+
+function makeFallbackCustom(): FxProfile {
+  return {
+    kind: "fx",
+    id: "__custom__",
+    name: "My Custom Sound",
+    emoji: "🎛️",
+    idleRpm: 400,
+    redlineRpm: 12000,
+    baseGain: 0.8,
+    continuous: true,
+    params: {
+      mode: "fx",
+      layers: [
+        { osc: "sine", f0: 120, f1: 320, g0: 0.25, g1: 0.25, filter: { type: "lp", f0: 300, f1: 2400, q: 1.2 } },
+        { osc: "saw", f0: 220, f1: 620, g0: 0.08, g1: 0.12, filter: { type: "bp", f0: 600, f1: 1800, q: 2 } },
+      ],
+    },
+  };
+}
+
+function cloneDefaultCustom(): FxProfile {
+  const etron = PROFILES.find((p): p is FxProfile => p.kind === "fx" && p.id === "etron");
+  const base = etron ? (JSON.parse(JSON.stringify(etron)) as FxProfile) : makeFallbackCustom();
+  base.id = "__custom__";
+  base.name = "My Custom Sound";
+  base.emoji = "🎛️";
+  return base;
+}
 
 const GPS_LABEL: Record<string, string> = {
   waiting: "Waiting for GPS…",
@@ -31,6 +64,24 @@ export default function Home() {
   const [demoMode, setDemoMode] = useState(false);
   const [demoSpeed, setDemoSpeed] = useState(0);
   const [display, setDisplay] = useState({ rpm: 0, gear: 1, speed: 0 });
+  const [showStudio, setShowStudio] = useState(false);
+  const [customProfile, setCustomProfile] = useState<FxProfile>(() => {
+    if (typeof window === "undefined") return cloneDefaultCustom();
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? (JSON.parse(saved) as FxProfile) : cloneDefaultCustom();
+    } catch {
+      return cloneDefaultCustom();
+    }
+  });
+
+  const allProfiles = useMemo(() => [...PROFILES, customProfile], [customProfile]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(customProfile));
+    } catch {}
+  }, [customProfile]);
 
   const audioRef = useRef<EngineAudio | null>(null);
   const trainRef = useRef(new Drivetrain());
@@ -46,7 +97,7 @@ export default function Home() {
   const speedRef = useRef(0);
   speedRef.current = demoMode ? demoSpeed : gpsSpeed;
 
-  const profile: SoundProfile = PROFILES.find((p) => p.id === profileId) ?? PROFILES[0];
+  const profile: SoundProfile = allProfiles.find((p) => p.id === profileId) ?? allProfiles[0];
   const profileRef = useRef(profile);
   profileRef.current = profile;
 
@@ -67,8 +118,7 @@ export default function Home() {
   // Restart the voice when the sound is changed while running
   useEffect(() => {
     if (running) audioRef.current?.start(profile);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId]);
+  }, [profile]);
 
   useEffect(() => {
     audioRef.current?.setVolume(volume);
@@ -78,6 +128,54 @@ export default function Home() {
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__EVFX_PROFILES = PROFILES;
   }, []);
+
+  // Restore settings from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (s.profileId && typeof s.profileId === "string") setProfileId(s.profileId);
+      if (typeof s.volume === "number") setVolume(s.volume);
+      if (typeof s.maxSpeed === "number") setMaxSpeed(s.maxSpeed);
+      if (typeof s.response === "number") setResponse(s.response);
+      if (["relaxed", "medium", "sport"].includes(s.shiftStyle)) setShiftStyle(s.shiftStyle);
+      if (typeof s.exteriorBoost === "boolean") setExteriorBoost(s.exteriorBoost);
+      if (typeof s.stabilityMode === "boolean") setStabilityMode(s.stabilityMode);
+      if (typeof s.motionAssist === "boolean") setMotionAssist(s.motionAssist);
+      if (typeof s.motionSensitivity === "number") setMotionSensitivity(s.motionSensitivity);
+    } catch {}
+  }, []);
+
+  // Save settings to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify({
+          profileId,
+          volume,
+          maxSpeed,
+          response,
+          shiftStyle,
+          exteriorBoost,
+          stabilityMode,
+          motionAssist,
+          motionSensitivity,
+        })
+      );
+    } catch {}
+  }, [
+    profileId,
+    volume,
+    maxSpeed,
+    response,
+    shiftStyle,
+    exteriorBoost,
+    stabilityMode,
+    motionAssist,
+    motionSensitivity,
+  ]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -158,7 +256,7 @@ export default function Home() {
       </section>
 
       <section className={styles.sounds}>
-        {PROFILES.map((p) => (
+        {allProfiles.map((p) => (
           <button
             key={p.id}
             className={`${styles.soundChip} ${p.id === profileId ? styles.soundChipActive : ""}`}
@@ -191,6 +289,10 @@ export default function Home() {
 
       <button className={styles.settingsToggle} onClick={() => setShowSettings((s) => !s)}>
         Settings {showSettings ? "▴" : "▾"}
+      </button>
+
+      <button className={styles.settingsToggle} onClick={() => setShowStudio((s) => !s)}>
+        Sound Studio {showStudio ? "▴" : "▾"}
       </button>
 
       {showSettings && (
@@ -311,6 +413,14 @@ export default function Home() {
             </label>
           )}
         </section>
+      )}
+
+      {showStudio && (
+        <SoundStudio
+          profile={customProfile}
+          onChange={setCustomProfile}
+          onTest={() => setProfileId(customProfile.id)}
+        />
       )}
 
       <footer className={styles.footer}>
