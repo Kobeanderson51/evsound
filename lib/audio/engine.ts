@@ -60,6 +60,10 @@ export class EngineAudio {
   exteriorBoost = false;
   /** Extra smoothing/buffering for devices that crackle */
   stabilityMode = false;
+  private revBuffer: AudioBuffer | null = null;
+  private revSrc: AudioBufferSourceNode | null = null;
+  private revGain: GainNode | null = null;
+  private revPlaying = false;
 
   get running() {
     return this.voice !== null;
@@ -144,6 +148,7 @@ export class EngineAudio {
 
   private async startSample(ctx: AudioContext, profile: SampleProfile) {
     const buf = await this.fetchBuffer(ctx, profile.url);
+    this.revBuffer = profile.revUrl ? await this.fetchBuffer(ctx, profile.revUrl) : null;
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
@@ -216,6 +221,36 @@ export class EngineAudio {
         t,
         0.08 * tau
       );
+      // One-shot rev sample triggered by REV button
+      if (revving && !this.revPlaying && this.revBuffer) {
+        const revSrc = this.ctx!.createBufferSource();
+        revSrc.buffer = this.revBuffer;
+        const g = this.ctx!.createGain();
+        g.gain.value = 0;
+        revSrc.connect(g);
+        g.connect(this.master!);
+        const gain = (v.profile.revGain ?? v.profile.baseGain * 1.2) * boost * this.gearVolSm;
+        g.gain.setTargetAtTime(gain, t, 0.02);
+        revSrc.onended = () => {
+          this.revPlaying = false;
+          try { revSrc.disconnect(); } catch {}
+          try { g.disconnect(); } catch {}
+          this.revSrc = null;
+          this.revGain = null;
+        };
+        revSrc.start(t);
+        this.revSrc = revSrc;
+        this.revGain = g;
+        this.revPlaying = true;
+      } else if (!revving && this.revPlaying && this.revSrc) {
+        try {
+          this.revSrc.stop(t);
+          this.revGain?.gain.setTargetAtTime(0, t, 0.05);
+        } catch {}
+        this.revPlaying = false;
+        this.revSrc = null;
+        this.revGain = null;
+      }
     } else {
       v.voice.update(rpm, throttle, revving);
       v.voice.setGain(v.profile.baseGain * boost * this.gearVolSm, 0.1 * tau);
@@ -243,5 +278,12 @@ export class EngineAudio {
     };
     setTimeout(cleanup, 600);
     this.voice = null;
+    if (this.revSrc) {
+      try { this.revSrc.stop(t); } catch {}
+      this.revPlaying = false;
+      this.revSrc = null;
+      this.revGain = null;
+    }
+    this.revBuffer = null;
   }
 }

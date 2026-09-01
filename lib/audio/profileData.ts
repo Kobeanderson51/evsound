@@ -43,6 +43,8 @@ export const PROFILES: SoundProfile[] = [
     baseGain: 0.85,
     rateRange: [1.0, 2.4],
     lowshelf: { hz: 120, db: 6 },
+    revUrl: "/sounds/audi-r8-rev-one-shot.wav",
+    revGain: 0.9,
   },
 
   // ========================== SYNTHESIZED ENGINES ==========================

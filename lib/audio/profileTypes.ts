@@ -106,6 +106,9 @@ export type SampleProfile = {
   /** playbackRate at idle / redline */
   rateRange: [number, number];
   lowshelf?: { hz: number; db: number };
+  /** optional one-shot rev sample that plays when REV is held */
+  revUrl?: string;
+  revGain?: number;
 };
 
 export type C63Profile = {
