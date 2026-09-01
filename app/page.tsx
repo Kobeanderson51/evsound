@@ -65,6 +65,7 @@ export default function Home() {
   const [demoSpeed, setDemoSpeed] = useState(0);
   const [display, setDisplay] = useState({ rpm: 0, gear: 1, speed: 0 });
   const [showStudio, setShowStudio] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [customProfile, setCustomProfile] = useState<FxProfile>(() => {
     if (typeof window === "undefined") return cloneDefaultCustom();
     try {
@@ -144,8 +145,13 @@ export default function Home() {
       if (typeof s.stabilityMode === "boolean") setStabilityMode(s.stabilityMode);
       if (typeof s.motionAssist === "boolean") setMotionAssist(s.motionAssist);
       if (typeof s.motionSensitivity === "number") setMotionSensitivity(s.motionSensitivity);
+      if (["dark", "light"].includes(s.theme)) setTheme(s.theme as "dark" | "light");
     } catch {}
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   // Save settings to localStorage
   useEffect(() => {
@@ -162,6 +168,7 @@ export default function Home() {
           stabilityMode,
           motionAssist,
           motionSensitivity,
+          theme,
         })
       );
     } catch {}
@@ -175,6 +182,7 @@ export default function Home() {
     stabilityMode,
     motionAssist,
     motionSensitivity,
+    theme,
   ]);
 
   useEffect(() => {
@@ -394,6 +402,15 @@ export default function Home() {
               />
             </label>
           )}
+
+          <label className={styles.settingRow}>
+            <input
+              type="checkbox"
+              checked={theme === "light"}
+              onChange={(e) => setTheme(e.target.checked ? "light" : "dark")}
+            />
+            <span>Light mode</span>
+          </label>
 
           <label className={styles.settingRow}>
             <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
