@@ -32,6 +32,18 @@ export const PROFILES: SoundProfile[] = [
     rateRange: [0.9, 1.75],
     lowshelf: { hz: 110, db: 7 },
   },
+  {
+    kind: "sample",
+    id: "audir8",
+    name: "Audi R8 — Idle + Revs",
+    emoji: "🏎️",
+    url: "/sounds/audi-r8-idle-rev-backfire.m4a",
+    idleRpm: 900,
+    redlineRpm: 8500,
+    baseGain: 0.9,
+    rateRange: [0.85, 1.35],
+    lowshelf: { hz: 120, db: 6 },
+  },
 
   // ========================== SYNTHESIZED ENGINES ==========================
   {
