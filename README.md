@@ -16,13 +16,19 @@ network requests after the page loads. Your location never leaves the device.
 
 ## Sounds
 
-- 🏁 V8 Muscle
-- 🏎️ V6 Sport
-- ⚡ EV Whine
-- 🛸 Sci-Fi Warp
+Real recordings: �️ Mercedes C63 AMG — Real V8 (multi-RPM sample bank) · 😈 Supercharged
+V8 Howl · 👻 Eerie Horror
+
+Synthesized engines: � Cammed American V8 · 🌪️ Blown V8 Whine · 🌀 Turbo Grit Rumble ·
+🚙 Boxer Rally Turbo · 💥 Rally Anti-Lag · 🇩🇪 Inline-Six Turbo (B58) · 🚛 Turbo Diesel
+Stack · 🚀 High Pitch Screamer
+
+EV / sci-fi: ⚡ Electric Swell · 🔌 Electric Supercharger · 🛸 Hypercar Whistle ·
+✈️ Turbine Spool-Up · 🦅 Twin Screamer Jets · 🚁 Retro Hover Car · 🌑 Deep Grid Rumble ·
+🌌 Warp Drive · 🧘 Calm 432Hz Hum
 
 To add a real recorded engine loop, drop an audio file in `public/sounds/` and add a
-`kind: "sample"` entry in `lib/audio/profiles.ts` (example included in the file).
+`kind: "sample"` entry in `lib/audio/profiles.ts`.
 
 ## Settings
 

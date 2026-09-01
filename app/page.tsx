@@ -55,6 +55,7 @@ export default function Home() {
     audioRef.current.setVolume(volume);
     trainRef.current.reset(profileRef.current.idleRpm);
     await audioRef.current.start(profileRef.current);
+    (window as unknown as Record<string, unknown>).__EVFX_AUDIO = audioRef.current;
     setRunning(true);
   }, [volume]);
 
@@ -104,7 +105,7 @@ export default function Home() {
         response: s.response,
         motionThrottle: motionThrottleRef.current,
       });
-      audioRef.current?.update(state.rpm, state.throttle);
+      audioRef.current?.update(state.rpm, state.throttle, state.gear, revHeld.current);
       if (now - lastUi > 100) {
         lastUi = now;
         setDisplay({ rpm: state.rpm, gear: state.gear, speed: speedRef.current });

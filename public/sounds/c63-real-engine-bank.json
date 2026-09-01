@@ -1,0 +1,375 @@
+{
+  "version": 4,
+  "sampleRate": 48000,
+  "loopSeconds": 0.68,
+  "banks": {
+    "load": [
+      {
+        "start": 0.0,
+        "duration": 0.68,
+        "rpm": 750
+      },
+      {
+        "start": 0.68,
+        "duration": 0.68,
+        "rpm": 1000
+      },
+      {
+        "start": 1.36,
+        "duration": 0.68,
+        "rpm": 1300
+      },
+      {
+        "start": 2.04,
+        "duration": 0.68,
+        "rpm": 1650
+      },
+      {
+        "start": 2.72,
+        "duration": 0.68,
+        "rpm": 2050
+      },
+      {
+        "start": 3.4,
+        "duration": 0.68,
+        "rpm": 2500
+      },
+      {
+        "start": 4.08,
+        "duration": 0.68,
+        "rpm": 3000
+      },
+      {
+        "start": 4.76,
+        "duration": 0.68,
+        "rpm": 3550
+      },
+      {
+        "start": 5.44,
+        "duration": 0.68,
+        "rpm": 4150
+      },
+      {
+        "start": 6.12,
+        "duration": 0.68,
+        "rpm": 4750
+      },
+      {
+        "start": 6.8,
+        "duration": 0.68,
+        "rpm": 5300
+      },
+      {
+        "start": 7.48,
+        "duration": 0.68,
+        "rpm": 5750
+      },
+      {
+        "start": 8.16,
+        "duration": 0.68,
+        "rpm": 6200
+      }
+    ],
+    "coast": [
+      {
+        "start": 8.84,
+        "duration": 0.68,
+        "rpm": 750
+      },
+      {
+        "start": 9.52,
+        "duration": 0.68,
+        "rpm": 1000
+      },
+      {
+        "start": 10.2,
+        "duration": 0.68,
+        "rpm": 1300
+      },
+      {
+        "start": 10.88,
+        "duration": 0.68,
+        "rpm": 1650
+      },
+      {
+        "start": 11.56,
+        "duration": 0.68,
+        "rpm": 2050
+      },
+      {
+        "start": 12.24,
+        "duration": 0.68,
+        "rpm": 2500
+      },
+      {
+        "start": 12.92,
+        "duration": 0.68,
+        "rpm": 3000
+      },
+      {
+        "start": 13.6,
+        "duration": 0.68,
+        "rpm": 3550
+      },
+      {
+        "start": 14.28,
+        "duration": 0.68,
+        "rpm": 4150
+      },
+      {
+        "start": 14.96,
+        "duration": 0.68,
+        "rpm": 4750
+      },
+      {
+        "start": 15.64,
+        "duration": 0.68,
+        "rpm": 5300
+      },
+      {
+        "start": 16.32,
+        "duration": 0.68,
+        "rpm": 5750
+      },
+      {
+        "start": 17.0,
+        "duration": 0.68,
+        "rpm": 6200
+      }
+    ],
+    "neutral": [
+      {
+        "start": 17.68,
+        "duration": 0.68,
+        "rpm": 750
+      },
+      {
+        "start": 18.36,
+        "duration": 0.68,
+        "rpm": 1000
+      },
+      {
+        "start": 19.04,
+        "duration": 0.68,
+        "rpm": 1300
+      },
+      {
+        "start": 19.72,
+        "duration": 0.68,
+        "rpm": 1650
+      },
+      {
+        "start": 20.4,
+        "duration": 0.68,
+        "rpm": 2050
+      },
+      {
+        "start": 21.08,
+        "duration": 0.68,
+        "rpm": 2500
+      },
+      {
+        "start": 21.76,
+        "duration": 0.68,
+        "rpm": 3000
+      },
+      {
+        "start": 22.44,
+        "duration": 0.68,
+        "rpm": 3550
+      },
+      {
+        "start": 23.12,
+        "duration": 0.68,
+        "rpm": 4150
+      },
+      {
+        "start": 23.8,
+        "duration": 0.68,
+        "rpm": 4750
+      },
+      {
+        "start": 24.48,
+        "duration": 0.68,
+        "rpm": 5300
+      },
+      {
+        "start": 25.16,
+        "duration": 0.68,
+        "rpm": 5750
+      },
+      {
+        "start": 25.84,
+        "duration": 0.68,
+        "rpm": 6200
+      }
+    ]
+  },
+  "events": {
+    "ignition": {
+      "start": 26.57,
+      "duration": 3.3
+    }
+  },
+  "phrases": {
+    "gear1": {
+      "start": 29.920000000000005,
+      "duration": 3.3500000000000005,
+      "rpmStart": 750,
+      "rpmEnd": 6200
+    },
+    "gear2": {
+      "start": 33.07,
+      "duration": 2.5,
+      "rpmStart": 3400,
+      "rpmEnd": 6200
+    },
+    "gear3": {
+      "start": 35.37,
+      "duration": 4.4,
+      "rpmStart": 3400,
+      "rpmEnd": 6200
+    },
+    "gear4": {
+      "start": 39.57,
+      "duration": 2.799999999999999,
+      "rpmStart": 3400,
+      "rpmEnd": 6200
+    },
+    "coastFall": {
+      "start": 42.42,
+      "duration": 10.55,
+      "rpmStart": 6200,
+      "rpmEnd": 750
+    },
+    "neutralBlip": {
+      "start": 53.02,
+      "duration": 8.1,
+      "rpmStart": 750,
+      "rpmEnd": 750
+    }
+  },
+  "manual": {
+    "rise": {
+      "start": 61.17,
+      "duration": 1.272,
+      "anchors": [
+        {
+          "rpm": 750,
+          "offset": 0.0
+        },
+        {
+          "rpm": 1000,
+          "offset": 0.05
+        },
+        {
+          "rpm": 1300,
+          "offset": 0.2
+        },
+        {
+          "rpm": 1650,
+          "offset": 0.35
+        },
+        {
+          "rpm": 2050,
+          "offset": 0.5
+        },
+        {
+          "rpm": 2500,
+          "offset": 0.62
+        },
+        {
+          "rpm": 3000,
+          "offset": 0.74
+        },
+        {
+          "rpm": 3550,
+          "offset": 0.86
+        },
+        {
+          "rpm": 4150,
+          "offset": 0.98
+        },
+        {
+          "rpm": 4750,
+          "offset": 1.08
+        },
+        {
+          "rpm": 5300,
+          "offset": 1.16
+        },
+        {
+          "rpm": 5750,
+          "offset": 1.22
+        },
+        {
+          "rpm": 6200,
+          "offset": 1.272
+        }
+      ]
+    },
+    "fall": {
+      "start": 62.492,
+      "duration": 3.95,
+      "anchors": [
+        {
+          "rpm": 6200,
+          "offset": 0.0
+        },
+        {
+          "rpm": 5750,
+          "offset": 0.15
+        },
+        {
+          "rpm": 5300,
+          "offset": 0.35
+        },
+        {
+          "rpm": 4750,
+          "offset": 0.7
+        },
+        {
+          "rpm": 4150,
+          "offset": 1.0
+        },
+        {
+          "rpm": 3550,
+          "offset": 1.35
+        },
+        {
+          "rpm": 3000,
+          "offset": 1.7
+        },
+        {
+          "rpm": 2500,
+          "offset": 2.1
+        },
+        {
+          "rpm": 2050,
+          "offset": 2.5
+        },
+        {
+          "rpm": 1650,
+          "offset": 2.85
+        },
+        {
+          "rpm": 1300,
+          "offset": 3.25
+        },
+        {
+          "rpm": 1000,
+          "offset": 3.65
+        },
+        {
+          "rpm": 750,
+          "offset": 3.95
+        }
+      ]
+    },
+    "redlineLoop": {
+      "start": 66.492,
+      "duration": 0.024333333333333332,
+      "rpm": 6200
+    }
+  }
+}
