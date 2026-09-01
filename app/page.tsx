@@ -7,6 +7,7 @@ import { EngineAudio } from "@/lib/audio/engine";
 import { Drivetrain, type ShiftStyle } from "@/lib/drivetrain";
 import { useSpeed } from "@/lib/useSpeed";
 import { useMotion } from "@/lib/useMotion";
+import { useEngineLoop } from "@/lib/useEngineLoop";
 import SoundStudio from "@/components/SoundStudio";
 import TuningPanel from "@/components/TuningPanel";
 import HudOverlay from "@/components/HudOverlay";
@@ -67,8 +68,6 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [demoSpeed, setDemoSpeed] = useState(0);
-  const [display, setDisplay] = useState({ rpm: 0, gear: 1, speed: 0 });
-  const [ecoScore, setEcoScore] = useState(100);
   const [showStudio, setShowStudio] = useState(false);
   const [showTuning, setShowTuning] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -115,9 +114,6 @@ export default function Home() {
   const audioRef = useRef<EngineAudio | null>(null);
   const trainRef = useRef(new Drivetrain());
   const revHeld = useRef(false);
-  const ecoScoreRef = useRef(100);
-  const lastEcoSpeedRef = useRef(0);
-  const lastEcoTimeRef = useRef(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const settingsRef = useRef({ maxSpeed, shiftStyle, response });
@@ -260,52 +256,17 @@ export default function Home() {
     }
   }, [exteriorBoost, stabilityMode, running]);
 
-  // Main loop
-  useEffect(() => {
-    if (!running) return;
-    let raf = 0;
-    let last = performance.now();
-    let lastUi = 0;
-    const loop = (now: number) => {
-      const dt = (now - last) / 1000;
-      last = now;
-      const p = profileRef.current;
-      const s = settingsRef.current;
-      const state = trainRef.current.tick(speedRef.current, dt, revHeld.current, {
-        idleRpm: p.idleRpm,
-        redlineRpm: p.redlineRpm,
-        maxSpeed: s.maxSpeed,
-        shiftStyle: s.shiftStyle,
-        response: s.response,
-        motionThrottle: motionThrottleRef.current,
-        manual: manualMode,
-      });
-      audioRef.current?.update(state.rpm, state.throttle, state.gear, revHeld.current);
-      const speed = speedRef.current;
-      if (lastEcoTimeRef.current === 0) {
-        lastEcoSpeedRef.current = speed;
-        lastEcoTimeRef.current = now;
-      } else if (speed !== lastEcoSpeedRef.current) {
-        const speedDelta = speed - lastEcoSpeedRef.current;
-        const timeDelta = (now - lastEcoTimeRef.current) / 1000;
-        if (timeDelta > 0.05) {
-          const accel = speedDelta / timeDelta;
-          const target = Math.max(0, 100 - Math.min(Math.abs(accel) * 8, 80));
-          ecoScoreRef.current = ecoScoreRef.current * 0.95 + target * 0.05;
-          lastEcoSpeedRef.current = speed;
-          lastEcoTimeRef.current = now;
-        }
-      }
-      if (now - lastUi > 100) {
-        lastUi = now;
-        setDisplay({ rpm: state.rpm, gear: state.gear, speed });
-        setEcoScore(Math.round(ecoScoreRef.current));
-      }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [running]);
+  const { display, ecoScore } = useEngineLoop({
+    running,
+    audioRef,
+    trainRef,
+    profileRef,
+    settingsRef,
+    speedRef,
+    revHeld,
+    motionThrottleRef,
+    manualMode,
+  });
 
   // Keep the screen awake while running
   useEffect(() => {

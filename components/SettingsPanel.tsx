@@ -1,6 +1,6 @@
 "use client";
 
-import styles from "@/app/page.module.css";
+import styles from "./SettingsPanel.module.css";
 import { type ShiftStyle } from "@/lib/drivetrain";
 
 type Props = {

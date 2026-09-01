@@ -1,0 +1,69 @@
+.controls {
+  display: flex;
+  gap: 14px;
+}
+
+.bigBtn {
+  flex: 1;
+  padding: 22px 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border-radius: 16px;
+  border: none;
+  color: #04131a;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.startBtn {
+  background: var(--accent);
+}
+
+.stopBtn {
+  background: var(--red);
+}
+
+.revBtn {
+  background: var(--bg-panel-2);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+
+.revBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.revBtn:active:not(:disabled) {
+  background: var(--accent-dim);
+  color: #fff;
+}
+
+/* Settings */
+.launchBtn {
+  background: linear-gradient(180deg, #ff6b6b, #c92a2a);
+  color: #fff;
+}
+
+.launchBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.recordBtn {
+  background: linear-gradient(180deg, #ef4444, #991b1b);
+  color: #fff;
+}
+
+.recordLink {
+  display: block;
+  text-align: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}

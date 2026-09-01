@@ -1,6 +1,6 @@
 "use client";
 
-import styles from "@/app/page.module.css";
+import styles from "./Controls.module.css";
 
 type Props = {
   running: boolean;
