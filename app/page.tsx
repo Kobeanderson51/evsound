@@ -9,6 +9,9 @@ import { useSpeed } from "@/lib/useSpeed";
 import { useMotion } from "@/lib/useMotion";
 import SoundStudio from "@/components/SoundStudio";
 import TuningPanel from "@/components/TuningPanel";
+import HudOverlay from "@/components/HudOverlay";
+import Controls from "@/components/Controls";
+import SettingsPanel from "@/components/SettingsPanel";
 
 const STORAGE_KEY = "evsound-custom-profile";
 const SETTINGS_KEY = "evsound-settings";
@@ -321,30 +324,15 @@ export default function Home() {
 
   if (hudMode) {
     return (
-      <div className={styles.hudOverlay} onClick={() => setHudMode(false)}>
-        <button
-          className={styles.hudExit}
-          onClick={(e) => {
-            e.stopPropagation();
-            setHudMode(false);
-          }}
-        >
-          Exit HUD
-        </button>
-        <div className={styles.hudSpeed}>{Math.round(display.speed)}</div>
-        <div className={styles.hudUnit}>MPH</div>
-        <div className={styles.hudRpmRow}>
-          <span className={styles.hudGear}>{display.speed < 1 && !running ? "P" : `G${display.gear}`}</span>
-          <div className={styles.hudRpmBar}>
-            <div
-              className={styles.hudRpmFill}
-              style={{ width: `${rpmPct}%`, background: rpmPct > 85 ? "var(--red)" : "var(--accent)" }}
-            />
-          </div>
-          <span className={styles.hudRpmText}>{running ? `${Math.round(display.rpm)} RPM` : "— RPM"}</span>
-        </div>
-        <div className={styles.hudEco}>Eco {ecoScore}</div>
-      </div>
+      <HudOverlay
+        speed={display.speed}
+        rpm={display.rpm}
+        gear={display.gear}
+        running={running}
+        rpmPct={rpmPct}
+        ecoScore={ecoScore}
+        onClose={() => setHudMode(false)}
+      />
     );
   }
 
@@ -400,53 +388,24 @@ export default function Home() {
         ))}
       </section>
 
-      <section className={styles.controls}>
-        <button
-          className={`${styles.bigBtn} ${running ? styles.stopBtn : styles.startBtn}`}
-          onClick={running ? stop : start}
-        >
-          {running ? "STOP" : "START"}
-        </button>
-        <button
-          className={`${styles.bigBtn} ${styles.revBtn}`}
-          disabled={!running}
-          onPointerDown={() => (revHeld.current = true)}
-          onPointerUp={() => (revHeld.current = false)}
-          onPointerLeave={() => (revHeld.current = false)}
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          HOLD TO REV
-        </button>
-        <button
-          className={`${styles.bigBtn} ${styles.launchBtn}`}
-          disabled={!running}
-          onClick={() => {
-            revHeld.current = true;
-            setTimeout(() => {
-              revHeld.current = false;
-            }, 2500);
-          }}
-        >
-          LAUNCH
-        </button>
-        <button
-          className={`${styles.bigBtn} ${isRecording ? styles.stopBtn : styles.recordBtn}`}
-          disabled={!running}
-          onClick={isRecording ? stopRecording : startRecording}
-        >
-          {isRecording ? "STOP REC" : "RECORD"}
-        </button>
-      </section>
-
-      {recordUrl && (
-        <a
-          href={recordUrl}
-          download={`evsound-${Date.now()}.${recordExt}`}
-          className={styles.recordLink}
-        >
-          Download recording
-        </a>
-      )}
+      <Controls
+        running={running}
+        isRecording={isRecording}
+        recordUrl={recordUrl}
+        recordExt={recordExt}
+        onStart={start}
+        onStop={stop}
+        onRevDown={() => (revHeld.current = true)}
+        onRevCancel={() => (revHeld.current = false)}
+        onLaunch={() => {
+          revHeld.current = true;
+          setTimeout(() => {
+            revHeld.current = false;
+          }, 2500);
+        }}
+        onStartRecord={startRecording}
+        onStopRecord={stopRecording}
+      />
 
       <button className={styles.settingsToggle} onClick={() => setHudMode(true)}>
         Open HUD ▣
@@ -465,157 +424,35 @@ export default function Home() {
       </button>
 
       {showSettings && (
-        <section className={styles.settings}>
-          <label className={styles.setting}>
-            <span>Volume</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-            />
-          </label>
-
-          <label className={styles.setting}>
-            <span>Max speed — {maxSpeed} mph</span>
-            <input
-              type="range"
-              min={30}
-              max={130}
-              step={5}
-              value={maxSpeed}
-              onChange={(e) => setMaxSpeed(Number(e.target.value))}
-            />
-          </label>
-
-          <label className={styles.setting}>
-            <span>Response — {response < 0.34 ? "Smoother" : response > 0.66 ? "Faster" : "Balanced"}</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={response}
-              onChange={(e) => setResponse(Number(e.target.value))}
-            />
-          </label>
-
-          <div className={styles.setting}>
-            <span>Shift style</span>
-            <div className={styles.segmented}>
-              {(["relaxed", "medium", "sport"] as ShiftStyle[]).map((s) => (
-                <button
-                  key={s}
-                  className={`${styles.segBtn} ${shiftStyle === s ? styles.segBtnActive : ""}`}
-                  onClick={() => setShiftStyle(s)}
-                >
-                  {s[0].toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <label className={styles.settingRow}>
-            <input
-              type="checkbox"
-              checked={exteriorBoost}
-              onChange={(e) => setExteriorBoost(e.target.checked)}
-            />
-            <span>Exterior Boost — loud at idle, for outside/Bluetooth speakers</span>
-          </label>
-
-          <label className={styles.settingRow}>
-            <input
-              type="checkbox"
-              checked={stabilityMode}
-              onChange={(e) => setStabilityMode(e.target.checked)}
-            />
-            <span>Audio Stability Mode — extra buffering for devices that crackle</span>
-          </label>
-
-          <label className={styles.settingRow}>
-            <input
-              type="checkbox"
-              checked={motionAssist}
-              onChange={(e) => setMotionAssist(e.target.checked)}
-            />
-            <span>
-              Motion assist — quicker throttle cues from phone/tablet motion
-              {!motionAvailable && motionAssist ? " (not available on this device)" : ""}
-            </span>
-          </label>
-          {motionAssist && (
-            <label className={styles.setting}>
-              <span>
-                Motion sensitivity —{" "}
-                {motionSensitivity < 0.34 ? "Low" : motionSensitivity > 0.66 ? "High" : "Balanced"}.
-                If bumps trigger false revs, lower this. GPS remains the primary speed source.
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={motionSensitivity}
-                onChange={(e) => setMotionSensitivity(Number(e.target.value))}
-              />
-            </label>
-          )}
-
-          <label className={styles.settingRow}>
-            <input
-              type="checkbox"
-              checked={manualMode}
-              onChange={(e) => setManualMode(e.target.checked)}
-            />
-            <span>Manual / paddle shift mode</span>
-          </label>
-          {manualMode && (
-            <div className={styles.setting}>
-              <span>Manual gear</span>
-              <div className={styles.segmented}>
-                {([1, 2, 3, 4, 5, 6] as const).map((g) => (
-                  <button
-                    key={g}
-                    className={`${styles.segBtn} ${manualGear === g ? styles.segBtnActive : ""}`}
-                    onClick={() => setManualGear(g)}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <label className={styles.settingRow}>
-            <input
-              type="checkbox"
-              checked={theme === "light"}
-              onChange={(e) => setTheme(e.target.checked ? "light" : "dark")}
-            />
-            <span>Light mode</span>
-          </label>
-
-          <label className={styles.settingRow}>
-            <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
-            <span>Demo mode (simulate speed without GPS)</span>
-          </label>
-          {demoMode && (
-            <label className={styles.setting}>
-              <span>Demo speed — {demoSpeed} mph</span>
-              <input
-                type="range"
-                min={0}
-                max={130}
-                step={1}
-                value={demoSpeed}
-                onChange={(e) => setDemoSpeed(Number(e.target.value))}
-              />
-            </label>
-          )}
-        </section>
+        <SettingsPanel
+          volume={volume}
+          setVolume={setVolume}
+          maxSpeed={maxSpeed}
+          setMaxSpeed={setMaxSpeed}
+          response={response}
+          setResponse={setResponse}
+          shiftStyle={shiftStyle}
+          setShiftStyle={setShiftStyle}
+          exteriorBoost={exteriorBoost}
+          setExteriorBoost={setExteriorBoost}
+          stabilityMode={stabilityMode}
+          setStabilityMode={setStabilityMode}
+          motionAssist={motionAssist}
+          setMotionAssist={setMotionAssist}
+          motionAvailable={motionAvailable}
+          motionSensitivity={motionSensitivity}
+          setMotionSensitivity={setMotionSensitivity}
+          manualMode={manualMode}
+          setManualMode={setManualMode}
+          manualGear={manualGear}
+          setManualGear={setManualGear}
+          theme={theme}
+          setTheme={setTheme}
+          demoMode={demoMode}
+          setDemoMode={setDemoMode}
+          demoSpeed={demoSpeed}
+          setDemoSpeed={setDemoSpeed}
+        />
       )}
 
       {showStudio && (

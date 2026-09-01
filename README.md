@@ -14,6 +14,20 @@ and a hold-to-rev button included.
 Everything runs 100% in your browser. No accounts, no data collection, no analytics, and no
 network requests after the page loads. Your location never leaves the device.
 
+## Features
+
+- Speed-reactive RPM and 6-gear simulation from GPS or Demo mode
+- 40+ sound profiles: real V8 recordings, classic/muscle/JDM engines, EV/sci-fi, and motorcycles/race
+- Sound Studio: design and save your own layered FX sound
+- Live Tuning panel: tweak engine crackle, turbo, intake, and gain while playing
+- Full-screen Speed/RPM/Eco HUD
+- Manual / paddle shift mode with 1-6 gear selection
+- Launch / rev limiter button
+- Audio recording and download
+- Dark & light dashboard themes
+- PWA support for install to home screen
+- Settings and custom profile automatically saved locally
+
 ## Sounds
 
 Real recordings: �️ Mercedes C63 AMG — Real V8 (multi-RPM sample bank) · 😈 Supercharged
@@ -28,14 +42,26 @@ EV / sci-fi: ⚡ Electric Swell · 🔌 Electric Supercharger · 🛸 Hypercar W
 🌌 Warp Drive · 🧘 Calm 432Hz Hum
 
 To add a real recorded engine loop, drop an audio file in `public/sounds/` and add a
-`kind: "sample"` entry in `lib/audio/profiles.ts`.
+`kind: "sample"` entry in `lib/audio/profileData.ts`.
 
 ## Settings
 
 Volume · Max speed · Response (smoother/faster) · Shift style (Relaxed/Medium/Sport) ·
 Exterior Boost (loud at idle for outside/Bluetooth speakers) · Audio Stability Mode
 (extra buffering for devices that crackle) · Motion assist (phone accelerometer for
-quicker throttle cues) · Demo mode (test without driving)
+quicker throttle cues) · Manual / paddle shift · Demo mode (test without driving) ·
+Light mode
+
+## Project layout
+
+- `app/page.tsx` — main dashboard and controls
+- `app/manifest.ts` — PWA manifest
+- `components/` — React components (Sound Studio, Tuning Panel, HUD overlay)
+- `lib/audio/` — audio engine, sound profile data/types, and worklet
+- `lib/drivetrain.ts` — vehicle physics (speed → RPM/gear)
+- `lib/useSpeed.ts` — GPS speed hook
+- `public/engine-worklet.js` — Web Audio processor for synthesized sound
+- `public/sounds/` — real recorded audio samples
 
 ## Development
 
