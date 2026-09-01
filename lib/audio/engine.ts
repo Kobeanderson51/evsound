@@ -49,6 +49,7 @@ function seamlessLoopPoints(buf: AudioBuffer): { start: number; end: number } {
 export class EngineAudio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private streamDest: MediaStreamAudioDestinationNode | null = null;
   private voice: WorkletVoice | SampleVoice | C63LiveVoice | null = null;
   private sampleCache = new Map<string, AudioBuffer>();
   private metaCache = new Map<string, C63Meta>();
@@ -83,8 +84,14 @@ export class EngineAudio {
       this.master.connect(limiter);
       limiter.connect(ceiling);
       ceiling.connect(this.ctx.destination);
+      this.streamDest = this.ctx.createMediaStreamDestination();
+      ceiling.connect(this.streamDest);
     }
     return this.ctx;
+  }
+
+  getStream(): MediaStream | null {
+    return this.streamDest?.stream ?? null;
   }
 
   setVolume(v: number) {

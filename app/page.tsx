@@ -8,6 +8,7 @@ import { Drivetrain, type ShiftStyle } from "@/lib/drivetrain";
 import { useSpeed } from "@/lib/useSpeed";
 import { useMotion } from "@/lib/useMotion";
 import SoundStudio from "@/components/SoundStudio";
+import TuningPanel from "@/components/TuningPanel";
 
 const STORAGE_KEY = "evsound-custom-profile";
 const SETTINGS_KEY = "evsound-settings";
@@ -64,8 +65,16 @@ export default function Home() {
   const [demoMode, setDemoMode] = useState(false);
   const [demoSpeed, setDemoSpeed] = useState(0);
   const [display, setDisplay] = useState({ rpm: 0, gear: 1, speed: 0 });
+  const [ecoScore, setEcoScore] = useState(100);
   const [showStudio, setShowStudio] = useState(false);
+  const [showTuning, setShowTuning] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [manualMode, setManualMode] = useState(false);
+  const [manualGear, setManualGear] = useState(1);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordUrl, setRecordUrl] = useState<string | null>(null);
+  const [recordExt, setRecordExt] = useState("webm");
+  const [hudMode, setHudMode] = useState(false);
   const [customProfile, setCustomProfile] = useState<FxProfile>(() => {
     if (typeof window === "undefined") return cloneDefaultCustom();
     try {
@@ -75,8 +84,24 @@ export default function Home() {
       return cloneDefaultCustom();
     }
   });
+  const [tunedProfile, setTunedProfile] = useState<SoundProfile | null>(null);
 
-  const allProfiles = useMemo(() => [...PROFILES, customProfile], [customProfile]);
+  const allProfiles = useMemo(() => {
+    const base = [...PROFILES];
+    if (tunedProfile && profileId !== customProfile.id) {
+      const idx = base.findIndex((p) => p.id === profileId);
+      if (idx !== -1) base[idx] = tunedProfile;
+    }
+    return [...base, customProfile];
+  }, [tunedProfile, customProfile, profileId]);
+
+  useEffect(() => {
+    const src =
+      profileId === customProfile.id
+        ? customProfile
+        : (PROFILES.find((p) => p.id === profileId) ?? PROFILES[0]);
+    setTunedProfile(JSON.parse(JSON.stringify(src)) as SoundProfile);
+  }, [profileId, customProfile]);
 
   useEffect(() => {
     try {
@@ -87,6 +112,11 @@ export default function Home() {
   const audioRef = useRef<EngineAudio | null>(null);
   const trainRef = useRef(new Drivetrain());
   const revHeld = useRef(false);
+  const ecoScoreRef = useRef(100);
+  const lastEcoSpeedRef = useRef(0);
+  const lastEcoTimeRef = useRef(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const settingsRef = useRef({ maxSpeed, shiftStyle, response });
   settingsRef.current = { maxSpeed, shiftStyle, response };
 
@@ -116,10 +146,40 @@ export default function Home() {
     setRunning(false);
   }, []);
 
+  const startRecording = useCallback(() => {
+    const stream = audioRef.current?.getStream();
+    if (!stream) return;
+    chunksRef.current = [];
+    setRecordExt("webm");
+    const recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = (e) => {
+      if (e.data.size) chunksRef.current.push(e.data);
+    };
+    recorder.onstop = () => {
+      const ext = recorder.mimeType.includes("mp4") ? "mp4" : "webm";
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+      const url = URL.createObjectURL(blob);
+      setRecordExt(ext);
+      setRecordUrl(url);
+      setIsRecording(false);
+    };
+    recorder.onerror = () => setIsRecording(false);
+    recorder.start(100);
+    recorderRef.current = recorder;
+    setRecordUrl(null);
+    setIsRecording(true);
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    recorderRef.current?.stop();
+  }, []);
+
   // Restart the voice when the sound is changed while running
   useEffect(() => {
-    if (running) audioRef.current?.start(profile);
-  }, [profile]);
+    if (!running) return;
+    const t = setTimeout(() => audioRef.current?.start(profile), 150);
+    return () => clearTimeout(t);
+  }, [profile, running]);
 
   useEffect(() => {
     audioRef.current?.setVolume(volume);
@@ -152,6 +212,11 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    trainRef.current.setManual(manualMode);
+    if (manualMode) trainRef.current.setGear(manualGear);
+  }, [manualMode, manualGear]);
 
   // Save settings to localStorage
   useEffect(() => {
@@ -210,11 +275,28 @@ export default function Home() {
         shiftStyle: s.shiftStyle,
         response: s.response,
         motionThrottle: motionThrottleRef.current,
+        manual: manualMode,
       });
       audioRef.current?.update(state.rpm, state.throttle, state.gear, revHeld.current);
+      const speed = speedRef.current;
+      if (lastEcoTimeRef.current === 0) {
+        lastEcoSpeedRef.current = speed;
+        lastEcoTimeRef.current = now;
+      } else if (speed !== lastEcoSpeedRef.current) {
+        const speedDelta = speed - lastEcoSpeedRef.current;
+        const timeDelta = (now - lastEcoTimeRef.current) / 1000;
+        if (timeDelta > 0.05) {
+          const accel = speedDelta / timeDelta;
+          const target = Math.max(0, 100 - Math.min(Math.abs(accel) * 8, 80));
+          ecoScoreRef.current = ecoScoreRef.current * 0.95 + target * 0.05;
+          lastEcoSpeedRef.current = speed;
+          lastEcoTimeRef.current = now;
+        }
+      }
       if (now - lastUi > 100) {
         lastUi = now;
-        setDisplay({ rpm: state.rpm, gear: state.gear, speed: speedRef.current });
+        setDisplay({ rpm: state.rpm, gear: state.gear, speed });
+        setEcoScore(Math.round(ecoScoreRef.current));
       }
       raf = requestAnimationFrame(loop);
     };
@@ -236,6 +318,35 @@ export default function Home() {
     100,
     Math.max(0, ((display.rpm - 0) / profile.redlineRpm) * 100)
   );
+
+  if (hudMode) {
+    return (
+      <div className={styles.hudOverlay} onClick={() => setHudMode(false)}>
+        <button
+          className={styles.hudExit}
+          onClick={(e) => {
+            e.stopPropagation();
+            setHudMode(false);
+          }}
+        >
+          Exit HUD
+        </button>
+        <div className={styles.hudSpeed}>{Math.round(display.speed)}</div>
+        <div className={styles.hudUnit}>MPH</div>
+        <div className={styles.hudRpmRow}>
+          <span className={styles.hudGear}>{display.speed < 1 && !running ? "P" : `G${display.gear}`}</span>
+          <div className={styles.hudRpmBar}>
+            <div
+              className={styles.hudRpmFill}
+              style={{ width: `${rpmPct}%`, background: rpmPct > 85 ? "var(--red)" : "var(--accent)" }}
+            />
+          </div>
+          <span className={styles.hudRpmText}>{running ? `${Math.round(display.rpm)} RPM` : "— RPM"}</span>
+        </div>
+        <div className={styles.hudEco}>Eco {ecoScore}</div>
+      </div>
+    );
+  }
 
   return (
     <main className={styles.main}>
@@ -260,6 +371,19 @@ export default function Home() {
             />
           </div>
           <span className={styles.rpmText}>{running ? `${Math.round(display.rpm)} RPM` : "— RPM"}</span>
+        </div>
+        <div className={styles.ecoRow}>
+          <span className={styles.ecoLabel}>Eco</span>
+          <div className={styles.ecoBar}>
+            <div
+              className={styles.ecoFill}
+              style={{
+                width: `${ecoScore}%`,
+                background: ecoScore > 70 ? "var(--green)" : ecoScore > 40 ? "var(--accent)" : "var(--red)",
+              }}
+            />
+          </div>
+          <span className={styles.ecoText}>{ecoScore}</span>
         </div>
       </section>
 
@@ -293,7 +417,40 @@ export default function Home() {
         >
           HOLD TO REV
         </button>
+        <button
+          className={`${styles.bigBtn} ${styles.launchBtn}`}
+          disabled={!running}
+          onClick={() => {
+            revHeld.current = true;
+            setTimeout(() => {
+              revHeld.current = false;
+            }, 2500);
+          }}
+        >
+          LAUNCH
+        </button>
+        <button
+          className={`${styles.bigBtn} ${isRecording ? styles.stopBtn : styles.recordBtn}`}
+          disabled={!running}
+          onClick={isRecording ? stopRecording : startRecording}
+        >
+          {isRecording ? "STOP REC" : "RECORD"}
+        </button>
       </section>
+
+      {recordUrl && (
+        <a
+          href={recordUrl}
+          download={`evsound-${Date.now()}.${recordExt}`}
+          className={styles.recordLink}
+        >
+          Download recording
+        </a>
+      )}
+
+      <button className={styles.settingsToggle} onClick={() => setHudMode(true)}>
+        Open HUD ▣
+      </button>
 
       <button className={styles.settingsToggle} onClick={() => setShowSettings((s) => !s)}>
         Settings {showSettings ? "▴" : "▾"}
@@ -301,6 +458,10 @@ export default function Home() {
 
       <button className={styles.settingsToggle} onClick={() => setShowStudio((s) => !s)}>
         Sound Studio {showStudio ? "▴" : "▾"}
+      </button>
+
+      <button className={styles.settingsToggle} onClick={() => setShowTuning((s) => !s)}>
+        Live Tuning {showTuning ? "▴" : "▾"}
       </button>
 
       {showSettings && (
@@ -406,6 +567,31 @@ export default function Home() {
           <label className={styles.settingRow}>
             <input
               type="checkbox"
+              checked={manualMode}
+              onChange={(e) => setManualMode(e.target.checked)}
+            />
+            <span>Manual / paddle shift mode</span>
+          </label>
+          {manualMode && (
+            <div className={styles.setting}>
+              <span>Manual gear</span>
+              <div className={styles.segmented}>
+                {([1, 2, 3, 4, 5, 6] as const).map((g) => (
+                  <button
+                    key={g}
+                    className={`${styles.segBtn} ${manualGear === g ? styles.segBtnActive : ""}`}
+                    onClick={() => setManualGear(g)}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <label className={styles.settingRow}>
+            <input
+              type="checkbox"
               checked={theme === "light"}
               onChange={(e) => setTheme(e.target.checked ? "light" : "dark")}
             />
@@ -439,6 +625,8 @@ export default function Home() {
           onTest={() => setProfileId(customProfile.id)}
         />
       )}
+
+      {showTuning && <TuningPanel profile={profile} onChange={setTunedProfile} />}
 
       <footer className={styles.footer}>
         Keep this tab active while driving — browsers pause audio when fully backgrounded.

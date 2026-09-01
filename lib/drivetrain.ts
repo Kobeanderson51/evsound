@@ -26,6 +26,7 @@ export class Drivetrain {
   private gear = 1;
   private lockout = 0;
   private revRpm = 0;
+  private manual = false;
   /** seconds remaining of downshift rev-match blip */
   private blip = 0;
   /** seconds remaining of upshift throttle cut */
@@ -54,9 +55,12 @@ export class Drivetrain {
       response: number;
       /** extra throttle 0..1 from motion assist (accelerometer) */
       motionThrottle?: number;
+      /** if true, the caller controls the gear directly */
+      manual?: boolean;
     }
   ): DrivetrainState {
     const { idleRpm, redlineRpm, maxSpeed, shiftStyle, response } = opts;
+    this.manual = opts.manual ?? false;
     dt = Math.min(Math.max(dt, 1e-3), 0.2);
     const respScale = 1.3 - response * 0.8; // scales every smoothing tau
 
@@ -96,7 +100,7 @@ export class Drivetrain {
     const rpmInGear = (g: number) => Math.max(idleRpm, this.speed * GEAR_RATIOS[g] * FINAL_DRIVE * k);
     this.lockout = Math.max(0, this.lockout - dt);
     const g = this.gear - 1;
-    if (this.lockout <= 0 && this.speed > 2) {
+    if (!this.manual && this.lockout <= 0 && this.speed > 2) {
       if (this.gear < 6 && rpmInGear(g) > tuning.up * redlineRpm) {
         this.gear++;
         this.lockout = tuning.lockout;
@@ -109,7 +113,7 @@ export class Drivetrain {
         this.cut = 0;
       }
     }
-    if (this.speed < 1.5) this.gear = 1;
+    if (!this.manual && this.speed < 1.5) this.gear = 1;
     const driveRpm = this.speed < 0.8 ? idleRpm : Math.min(redlineRpm, rpmInGear(this.gear - 1));
 
     // --- throttle output (0..1; <0.15 reads as overrun to the synth) ---
@@ -143,6 +147,14 @@ export class Drivetrain {
     this.rpm = next;
 
     return { rpm: this.rpm, gear: this.gear, throttle };
+  }
+
+  setManual(manual: boolean) {
+    this.manual = manual;
+  }
+
+  setGear(gear: number) {
+    this.gear = Math.max(1, Math.min(6, Math.round(gear)));
   }
 
   reset(idleRpm: number) {
